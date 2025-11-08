@@ -1,0 +1,66 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: gateway-service
+  main:
+    web-application-type: reactive
+  cloud:
+    gateway:
+      routes:
+        - id: auth
+          uri: lb://auth-service
+          predicates: [ Path=/auth/** ]
+        - id: auth-admin
+          uri: lb://auth-service
+          predicates:
+            - Path=/admin/users/**,/admin/audit/**
+        - id: user
+          uri: lb://user-service
+          predicates: [ Path=/user/** ]
+        - id: user-admin
+          uri: lb://user-service
+          predicates:
+            - Path=/admin/stats/health-records/**,/admin/stats/abnormal-rate/**
+        - id: doctor
+          uri: lb://doctor-service
+          predicates:
+            - Path=/doctor/**,/department/**
+        - id: doctor-admin
+          uri: lb://doctor-service
+          predicates:
+            - Path=/admin/doctor/**,/admin/department/**
+        - id: appointment
+          uri: lb://appointment-service
+          predicates: [ Path=/appointment/** ]
+        - id: appointment-admin
+          uri: lb://appointment-service
+          predicates:
+            - Path=/appointment/admin/**
+        - id: content
+          uri: lb://content-service
+          predicates:
+            - Path=/content/**,/file/**
+        - id: activity
+          uri: lb://activity-service
+          predicates: [ Path=/activity/** ]
+    discovery:
+      locator:
+        enabled: true
+
+security:
+  jwt:
+    secret: "ChangeThisSecretToA256bitKey_ChangeThisSecretToA256bitKey"
+    ttl: 259200000
+  whitelist: [/auth, /actuator]
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

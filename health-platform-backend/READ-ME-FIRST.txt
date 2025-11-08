@@ -1,0 +1,8 @@
+
+Patch: switch all Dockerfiles to mcr.microsoft.com/openjdk/jdk:21-ubuntu
+Usage:
+1) Unzip into your project root and overwrite Dockerfiles.
+2) Run:
+   mvn -DskipTests clean package
+   docker compose -f docker-compose.yml build --no-cache
+   docker compose -f docker-compose.yml up -d

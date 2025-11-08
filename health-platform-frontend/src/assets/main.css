@@ -1,0 +1,136 @@
+@import 'element-plus/dist/index.css';
+
+:root {
+  color-scheme: light;
+  --app-primary: #4f46e5;
+  --app-primary-dark: #4338ca;
+  --app-accent: #14b8a6;
+  --app-bg: #f3f4ff;
+  --app-surface: rgba(255, 255, 255, 0.92);
+  --app-muted: #4a5568;
+  --app-text: #0f172a;
+  --sidebar-gradient: linear-gradient(180deg, #111c44 0%, #050b2a 100%);
+  --sidebar-border: rgba(255, 255, 255, 0.05);
+  --sidebar-glow: rgba(79, 70, 229, 0.35);
+  --navbar-blur: rgba(255, 255, 255, 0.92);
+  --bg-gradient: radial-gradient(650px circle at 15% 20%, rgba(79, 70, 229, 0.18), transparent 55%),
+    radial-gradient(650px circle at 85% 15%, rgba(20, 184, 166, 0.14), transparent 50%),
+    linear-gradient(180deg, rgba(237, 237, 255, 0.6) 0%, rgba(243, 244, 255, 0.85) 100%);
+  --card-radius: 18px;
+  --card-shadow: 0 24px 45px rgba(15, 23, 42, 0.08);
+  --section-gap: 24px;
+  --transition-base: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  --focus-ring: 0 0 0 3px rgba(79, 70, 229, 0.35);
+  --el-color-primary: var(--app-primary);
+  --el-color-primary-light-3: #7c73ff;
+  --el-color-primary-light-5: #a6a1ff;
+  --el-color-primary-light-7: #c7c4ff;
+  --el-color-primary-light-9: #edeaff;
+  --el-border-radius-base: var(--card-radius);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --app-primary: #8b7bff;
+  --app-primary-dark: #7565f2;
+  --app-accent: #2dd4bf;
+  --app-bg: #0b1120;
+  --app-surface: rgba(17, 25, 40, 0.78);
+  --app-muted: #c3d4f0;
+  --app-text: #f1f5f9;
+  --sidebar-gradient: linear-gradient(180deg, #0f172a 0%, #020617 100%);
+  --sidebar-border: rgba(148, 163, 184, 0.12);
+  --sidebar-glow: rgba(139, 123, 255, 0.35);
+  --navbar-blur: rgba(15, 23, 42, 0.9);
+  --bg-gradient: radial-gradient(700px circle at 20% 20%, rgba(139, 123, 255, 0.28), transparent 60%),
+    radial-gradient(700px circle at 80% 10%, rgba(45, 212, 191, 0.22), transparent 55%),
+    linear-gradient(180deg, rgba(12, 20, 38, 0.95), rgba(2, 6, 23, 0.92));
+  --card-shadow: 0 18px 40px rgba(2, 6, 23, 0.65);
+  --focus-ring: 0 0 0 3px rgba(139, 123, 255, 0.45);
+  --el-color-primary: var(--app-primary);
+  --el-color-primary-light-3: #9f92ff;
+  --el-color-primary-light-5: #b8b0ff;
+  --el-color-primary-light-7: #d2ccff;
+  --el-color-primary-light-9: #edeaff;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  color: var(--app-text);
+  background: var(--app-bg);
+  font-family: 'Inter', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--transition-base), color var(--transition-base);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--bg-gradient);
+  transition: opacity var(--transition-base);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+a {
+  transition: color var(--transition-base), background-color var(--transition-base),
+    border-color var(--transition-base), transform var(--transition-base);
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(79, 70, 229, 0.35);
+  border-radius: 4px;
+}
+
+::selection {
+  background: rgba(79, 70, 229, 0.28);
+  color: var(--app-text);
+}
+
+:root[data-theme='dark'] ::selection {
+  background: rgba(139, 123, 255, 0.35);
+  color: var(--app-text);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
