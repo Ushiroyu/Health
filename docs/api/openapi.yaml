@@ -1,0 +1,952 @@
+﻿openapi: 3.0.3
+info:
+  title: 社区健康管理平台 API
+  version: "1.0.0"
+  description: |
+    Spring Cloud + Spring Boot 3 微服务集，覆盖认证、居民档案、医生排班、预约、资讯、活动、文件等域。
+    所有业务响应都包裹在统一的 `ApiResponse` (code/message/data) 结构中：code=0 代表成功，其余为业务错误码。
+servers:
+  - url: http://localhost:8080
+    description: 本地 Gateway (docker compose)
+  - url: https://{demo-host}
+    description: Render / Koyeb Demo (替换为真实域名)
+    variables:
+      demo-host:
+        default: demo.health-platform.example.com
+        description: 参考占位符
+tags:
+  - name: Auth
+    description: 用户登录注册
+  - name: Profiles
+    description: 居民健康档案
+  - name: Doctors
+    description: 医生与科室查询
+  - name: Appointments
+    description: 挂号排班
+  - name: Content
+    description: 健康资讯
+  - name: Files
+    description: MinIO 对象存储
+  - name: Activities
+    description: 社区活动与报名
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: 登录并获取 JWT
+      operationId: login
+      description: |
+        校验用户名/密码并签发 JWT。该接口在 API 网关白名单中，无需携带 Authorization。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              admin:
+                value:
+                  username: admin
+                  password: admin123
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LoginData'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: 注册居民账号
+      operationId: register
+      description: 注册普通居民账号 (ROLE=RESIDENT)。高级角色需管理员创建。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RegisterData'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+  /user/profile/me:
+    get:
+      tags: [Profiles]
+      summary: 查看当前登录人的健康档案
+      operationId: getMyProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 档案信息
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/HealthProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: [Profiles]
+      summary: 更新当前登录人的健康档案
+      operationId: updateMyProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HealthProfileUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ProfileUpdateData'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+  /doctor/search:
+    get:
+      tags: [Doctors]
+      summary: 综合检索医生
+      operationId: searchDoctors
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: deptId
+          schema:
+            type: integer
+            format: int64
+          description: 按科室过滤
+        - in: query
+          name: keyword
+          schema:
+            type: string
+          description: 匹配职称/专长
+        - in: query
+          name: symptoms
+          schema:
+            type: string
+          description: 逗号分隔的症状标签
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [ENABLED, DISABLED]
+        - in: query
+          name: date
+          schema:
+            type: string
+            format: date
+          description: 查询某天的剩余号源
+        - in: query
+          name: time
+          schema:
+            type: string
+          description: 指定具体时段 (配合 date)
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: 检索结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DoctorSearchResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /appointment/slots:
+    get:
+      tags: [Appointments]
+      summary: 查询某医生在某天的号源余量
+      operationId: querySlots
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: doctorId
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: date
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 时段 -> 剩余号源
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AppointmentSlotMap'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /appointment/book:
+    post:
+      tags: [Appointments]
+      summary: 预约挂号
+      operationId: bookAppointment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentBookRequest'
+      responses:
+        '200':
+          description: 预约成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AppointmentBookData'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: 号源不足或重复
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /appointment/cancel/{id}:
+    post:
+      tags: [Appointments]
+      summary: 取消预约
+      operationId: cancelAppointment
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 取消成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /appointment/my:
+    get:
+      tags: [Appointments]
+      summary: 查看我的预约记录
+      operationId: myAppointments
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - in: query
+          name: status
+          schema:
+            type: string
+            description: booked/canceled/completed
+      responses:
+        '200':
+          description: 分页结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AppointmentPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /content/article/search:
+    get:
+      tags: [Content]
+      summary: 检索健康资讯
+      operationId: searchArticles
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: 标题或正文关键字
+        - in: query
+          name: category
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: 分页文章
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ArticlePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /content/article/{id}:
+    get:
+      tags: [Content]
+      summary: 查看文章详情
+      operationId: getArticle
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 文章详情
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Article'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /file/upload:
+    post:
+      tags: [Files]
+      summary: 上传图片/附件到 MinIO
+      operationId: uploadFile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 支持 PNG/JPEG/GIF/PDF，大小 ≤ 10MB
+      responses:
+        '200':
+          description: 上传成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/FileUploadData'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+  /activity/event/search:
+    get:
+      tags: [Activities]
+      summary: 搜索/筛选活动
+      operationId: searchEvents
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: 标题关键字
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: 活动分页
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EventPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /activity/event/{id}/register:
+    post:
+      tags: [Activities]
+      summary: 报名活动
+      operationId: registerEvent
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 报名成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RegistrationData'
+        '409':
+          description: 名额已满或重复报名
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /activity/my-registrations:
+    get:
+      tags: [Activities]
+      summary: 我的活动报名
+      operationId: myRegistrations
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: 报名分页
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EventRegistrationPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+      description: 分页页码 (从 0 开始)
+    SizeParam:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 20
+      description: 每页数量
+  responses:
+    Unauthorized:
+      description: 未认证或 token 失效
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 401
+            message: Missing Authorization token
+            data: null
+    ValidationError:
+      description: 参数校验失败
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 422
+            message: 参数不合法
+            data: null
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 404
+            message: 数据不存在
+            data: null
+  schemas:
+    ApiResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: 0 表示成功
+        message:
+          type: string
+        data:
+          nullable: true
+          description: 业务数据
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          nullable: true
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+    RegisterRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          minLength: 6
+        role:
+          type: string
+          enum: [RESIDENT, DOCTOR, ADMIN]
+          description: 默认为 RESIDENT
+    LoginData:
+      type: object
+      properties:
+        token:
+          type: string
+        role:
+          type: string
+        userId:
+          type: integer
+          format: int64
+    RegisterData:
+      type: object
+      properties:
+        userId:
+          type: integer
+          format: int64
+    HealthProfile:
+      type: object
+      properties:
+        profileId:
+          type: integer
+          format: int64
+        userId:
+          type: integer
+          format: int64
+        fullName:
+          type: string
+        gender:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        bloodType:
+          type: string
+        phone:
+          type: string
+          description: 加密存储字段，响应已脱敏
+        email:
+          type: string
+        address:
+          type: string
+        idNumber:
+          type: string
+        chronicConditions:
+          type: string
+        allergies:
+          type: string
+        medicalHistory:
+          type: string
+        medications:
+          type: string
+        emergencyContact:
+          type: string
+        emergencyPhone:
+          type: string
+        lifestyleNotes:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+    HealthProfileUpdateRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+        gender:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        bloodType:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        idNumber:
+          type: string
+        chronicConditions:
+          type: string
+        allergies:
+          type: string
+        medicalHistory:
+          type: string
+        medications:
+          type: string
+        emergencyContact:
+          type: string
+        emergencyPhone:
+          type: string
+        lifestyleNotes:
+          type: string
+    ProfileUpdateData:
+      type: object
+      properties:
+        profileId:
+          type: integer
+          format: int64
+        lastUpdated:
+          type: string
+          format: date-time
+    DoctorSummary:
+      type: object
+      properties:
+        doctorId:
+          type: integer
+          format: int64
+        deptId:
+          type: integer
+          format: int64
+        title:
+          type: string
+        specialty:
+          type: string
+        status:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        date:
+          type: string
+          format: date
+          nullable: true
+        available:
+          type: boolean
+          description: 结合 date/time 查询时返回
+        availableSlots:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: 仅在指定 date 且未指定 time 时返回
+        timeSlot:
+          type: string
+          nullable: true
+          description: 指定 date 与 time 时返回
+    DoctorSearchResult:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoctorSummary'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+    AppointmentSlotMap:
+      type: object
+      additionalProperties:
+        type: integer
+        description: 剩余号源数量
+    AppointmentBookRequest:
+      type: object
+      required: [doctorId, date, time]
+      properties:
+        doctorId:
+          type: integer
+          format: int64
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          description: 时段，例如 09:00-09:15
+        symptom:
+          type: string
+          description: 主诉/症状描述
+    AppointmentBookData:
+      type: object
+      properties:
+        apptId:
+          type: integer
+          format: int64
+        left:
+          type: integer
+          description: 该时段剩余数量
+    Appointment:
+      type: object
+      properties:
+        apptId:
+          type: integer
+          format: int64
+        userId:
+          type: integer
+          format: int64
+        doctorId:
+          type: integer
+          format: int64
+        apptDate:
+          type: string
+          format: date
+        apptTime:
+          type: string
+        status:
+          type: string
+        symptom:
+          type: string
+    AppointmentPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Appointment'
+        number:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+    Article:
+      type: object
+      properties:
+        articleId:
+          type: integer
+          format: int64
+        title:
+          type: string
+        content:
+          type: string
+        category:
+          type: string
+        authorId:
+          type: integer
+          format: int64
+        publishDate:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+        reviewerId:
+          type: integer
+          format: int64
+          nullable: true
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        rejectReason:
+          type: string
+          nullable: true
+    ArticlePage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Article'
+        number:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+    FileUploadData:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        object:
+          type: string
+        presignedUrl:
+          type: string
+          format: uri
+    CommunityEvent:
+      type: object
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        title:
+          type: string
+        description:
+          type: string
+        eventDate:
+          type: string
+          format: date-time
+        location:
+          type: string
+        capacity:
+          type: integer
+          nullable: true
+        organizer:
+          type: string
+        status:
+          type: string
+    EventPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommunityEvent'
+        number:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+    EventRegistration:
+      type: object
+      properties:
+        regId:
+          type: integer
+          format: int64
+        eventId:
+          type: integer
+          format: int64
+        userId:
+          type: integer
+          format: int64
+        regTime:
+          type: string
+          format: date-time
+    EventRegistrationPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventRegistration'
+        number:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+    RegistrationData:
+      type: object
+      properties:
+        regId:
+          type: integer
+          format: int64

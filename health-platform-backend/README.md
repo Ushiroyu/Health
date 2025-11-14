@@ -24,7 +24,7 @@ Spring Cloud 微服务集群，为社区健康管理系统提供认证、居民�
 - **在线问诊/健康指导**：ConsultController 负责会话与消息流，GuidanceController 让医生下发指导方案、居民自行管理提醒。NotificationSender 目前提供站内信、短信、邮件扩展点。
 - **健康资讯 & 文件**：content-service 与 MinIO 集成，完成类型/大小校验、对象化存储与预签名访问，前端仅需保存 object key。
 - **社区活动**：活动发布、报名容量校验、报名记录查询、取消报名及活动事件广播。
-- **运营能力**：各服务的 AdminAuditController 写入 AuditLog；AdminStatsController 聚合预约数据并支持 CSV 导出；db/schema.sql/data.sql 可快速初始化演示数据。
+- **运营能力**：各服务的 AdminAuditController 写入 AuditLog；AdminStatsController 聚合预约数据并支持 CSV 导出；`database/init.sql` 可快速初始化演示数据。
 
 ## 运行步骤
 1. **准备依赖**：MySQL 8（默认库 healthdb）、Redis 7、RocketMQ 5.3、MinIO（默认桶 health-bucket）。可通过仓库根目录的 docker-compose.yml 拉起 redis/rocketmq/minio 及各服务容器。
@@ -53,8 +53,7 @@ Spring Cloud 微服务集群，为社区健康管理系统提供认证、居民�
 > 也可以直接 docker compose up gateway auth user doctor appointment content activity，其余依赖容器会被自动拉起。
 
 ## 数据与脚本
-- db/schema.sql：表结构覆盖用户/医生/预约/排班/资讯/活动/审计等实体。
-- db/data.sql：示例科室、医生、居民、排班、资讯、活动数据，可用于演示。
+- database/init.sql：合并 schema + data，覆盖用户/医生/预约/排班/资讯/活动/审计等实体与示例数据，可用于演示。
 - scripts/：可存放初始化脚本或 CI 辅助命令（当前为空目录，可视需要补充）。
 
 ## 集成要点
