@@ -5,7 +5,14 @@ import lombok.*;
 import com.community.health.common.security.AesGcmStringConverter;
 import java.time.LocalDate;
 
-@Entity @Table(name = "appointment", uniqueConstraints = @UniqueConstraint(name="uniq_doctor_time", columnNames={"doctorId","apptDate","apptTime"}))
+@Entity
+@Table(
+  name = "appointment",
+  uniqueConstraints = @UniqueConstraint(
+    name = "uniq_doctor_time",
+    columnNames = {"doctor_id", "appt_date", "appt_time"}
+  )
+)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Appointment {
   @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

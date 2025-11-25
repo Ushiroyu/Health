@@ -4,7 +4,14 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
-@Entity @Table(name="event_registration", uniqueConstraints = @UniqueConstraint(name="uniq_event_user", columnNames={"eventId","userId"}))
+@Entity
+@Table(
+  name = "event_registration",
+  uniqueConstraints = @UniqueConstraint(
+    name = "uniq_event_user",
+    columnNames = {"event_id", "user_id"}
+  )
+)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class EventRegistration {
   @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

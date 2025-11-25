@@ -4,7 +4,13 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "schedule", uniqueConstraints = @UniqueConstraint(name = "uniq_doc_date_slot", columnNames = {"doctorId","date","timeSlot"}))
+@Table(
+  name = "schedule",
+  uniqueConstraints = @UniqueConstraint(
+    name = "uniq_doc_date_slot",
+    columnNames = {"doctor_id", "date", "time_slot"}
+  )
+)
 public class Schedule {
   @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long scheduleId;
@@ -27,4 +33,3 @@ public class Schedule {
   public String getStatus() { return status; }
   public void setStatus(String status) { this.status = status; }
 }
-
